@@ -75,7 +75,7 @@ keyvaultName="${clusterName}"
 az group create --name $resourceGroupName --location $location
 
 # Create a keyvault
-az keyvault create -n $keyvaultName -g $resourceGroupName --enable-soft-delete true
+# az keyvault create -n $keyvaultName -g $resourceGroupName
 
 sshKeyFile=~/.ssh/${name}_rsa
 setKeyVaultSshSecrets=false
@@ -147,7 +147,7 @@ then
         --service-principal $spId \
         --client-secret $spPass \
         --ssh-key-value ${sshKeyFile}.pub \
-        --kubernetes-version 1.18.2
+        --kubernetes-version 1.29.2
 else
     az aks update \
         --resource-group $resourceGroupName \
@@ -161,7 +161,7 @@ fi
 az aks get-credentials --name $clusterName --resource-group $resourceGroupName
 
 # Add the official stable repository
-helm repo add stable https://kubernetes-charts.storage.googleapis.com/
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 
 # Install nginx
 foundIngressControllerNamespace=`kubectl get namespace -o json | jq '.items[] | select(.metadata.name == "ingress-controller")'`
@@ -171,11 +171,12 @@ fi
 
 # The specification of linux nodes here is not really necessary since that is all we have
 # but if we add Windows nodes in the future, we will want to make sure nginx is on Linux
-helm upgrade --install nginx-ingress stable/nginx-ingress \
+helm upgrade --install nginx-ingress ingress-nginx/ingress-nginx \
     --namespace ingress-controller \
     --set controller.replicaCount=2 \
     --set controller.nodeSelector."kubernetes\.io/os"=linux \
-    --set defaultBackend.nodeSelector."kubernetes\.io/os"=linux
+    --set defaultBackend.nodeSelector."kubernetes\.io/os"=linux \
+    --skip-crds
 
 # Set up cert-manager
 foundCertManagerNamespace=`kubectl get namespace -o json | jq '.items[] | select(.metadata.name == "cert-manager")'`
